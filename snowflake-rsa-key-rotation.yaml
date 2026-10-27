@@ -1,0 +1,53 @@
+name: Snowflake-RSA-Key-Rotation-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none
+
+schedules:
+- cron: "0 5 1 * *"
+  displayName: "Monthly Snowflake service-user RSA key rotation"
+  branches:
+    include:
+    - main
+  always: true
+
+variables:
+- group: "Snowflake-RSA-Key-Rotation"
+
+pool:
+  vmImage: "windows-latest"
+
+steps:
+- checkout: self
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: "3.11"
+    addToPath: true
+  displayName: "Select Python 3.11"
+
+- task: AzureCLI@2
+  displayName: "Rotate Snowflake service-user RSA key"
+  inputs:
+    azureSubscription: "$(azure_service_connection)"
+    scriptType: pscore
+    scriptLocation: inlineScript
+    inlineScript: |
+      $ErrorActionPreference = "Stop"
+      $scriptDirectory = "$(System.DefaultWorkingDirectory)"
+      python -m pip install --disable-pip-version-check -r (Join-Path $scriptDirectory "requirements.txt")
+      if ($LASTEXITCODE -ne 0) {
+        throw "Installing Python dependencies failed."
+      }
+      python (Join-Path $scriptDirectory "rotate_snowflake_rsa_key.py")
+      if ($LASTEXITCODE -ne 0) {
+        throw "Snowflake RSA key rotation failed."
+      }
+  env:
+    AZURE_KEY_VAULT_URL: $(azure_key_vault_url)
+    SNOWFLAKE_ACCOUNT: $(snowflake_account)
+    SNOWFLAKE_ADMIN_USER: $(snowflake_admin_user)
+    SNOWFLAKE_ADMIN_ROLE: $(snowflake_admin_role)
+    SNOWFLAKE_ADMIN_PRIVATE_KEY_SECRET: $(snowflake_admin_private_key_secret)
+    SNOWFLAKE_ADMIN_PRIVATE_KEY_PASSPHRASE_SECRET: $(snowflake_admin_private_key_passphrase_secret)
+    SNOWFLAKE_SERVICE_USER: $(snowflake_service_user)
+    SNOWFLAKE_SERVICE_PRIVATE_KEY_SECRET: $(snowflake_service_private_key_secret)

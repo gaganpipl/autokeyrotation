@@ -1,0 +1,4 @@
+azure-identity>=1.17,<2
+azure-keyvault-secrets>=4.8,<5
+cryptography>=42,<47
+snowflake-connector-python>=3.16,<5
